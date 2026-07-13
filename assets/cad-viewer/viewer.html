@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CadViewer</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #1a1a1a;
+    }
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas {
+      max-width: 100%;
+      max-height: 100%;
+      background-color: #ffffff;
+      border: 1px solid #ccc;
+    }
+    #status-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: #ffffff;
+      padding: 8px 16px;
+      font-family: sans-serif;
+      font-size: 14px;
+      z-index: 100;
+    }
+    #loading {
+      color: #00ff00;
+    }
+    #error {
+      color: #ff0000;
+    }
+    #file-info {
+      color: #ffff00;
+    }
+  </style>
+</head>
+<body>
+  <div id="status-bar">
+    <span id="loading">正在初始化 CAD 查看器...</span>
+    <span id="error" style="display:none;"></span>
+    <span id="file-info" style="display:none;"></span>
+  </div>
+  <div id="canvas-container">
+    <canvas id="cad-canvas"></canvas>
+  </div>
+
+  <script src="cad-viewer.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      initViewer();
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage('viewer_ready');
+      }
+    });
+
+    window.openDxfFile = function(filePath) {
+      loadDxfFile(filePath);
+    };
+  </script>
+</body>
+</html>
