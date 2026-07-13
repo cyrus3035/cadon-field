@@ -21,26 +21,21 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies
-      run: npm ci
+      run: npm install
 
-    - name: Set up Java
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+    - name: Install eas-cli
+      run: npm install -g eas-cli
 
-    - name: Run expo prebuild
-      run: npx expo prebuild --platform android
+    - name: Build Android APK with EAS Remote
+      run: eas build --platform android --profile development --wait
+      env:
+        EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-    - name: Build Android APK
+    - name: Download APK
       run: |
-        cd android
-        ./gradlew assembleDebug
-        cd ..
-
-    - name: Rename APK
-      run: |
-        cp android/app/build/outputs/apk/debug/app-debug.apk CadonField-debug.apk
+        eas build:artifact:download --platform android --profile development --latest --output CadonField-debug.apk
+      env:
+        EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
