@@ -1,0 +1,121 @@
+﻿{
+    "total_count":  1,
+    "jobs":  [
+                 {
+                     "id":  86775656863,
+                     "run_id":  29237549953,
+                     "workflow_name":  "Build Android Debug APK",
+                     "head_branch":  "main",
+                     "run_url":  "https://api.github.com/repos/cyrus3035/cadon-field/actions/runs/29237549953",
+                     "run_attempt":  1,
+                     "node_id":  "CR_kwDOTW3pjc8AAAAUNDtxnw",
+                     "head_sha":  "aab0109935e3bb90c4ab513642eea6da25431f79",
+                     "url":  "https://api.github.com/repos/cyrus3035/cadon-field/actions/jobs/86775656863",
+                     "html_url":  "https://github.com/cyrus3035/cadon-field/actions/runs/29237549953/job/86775656863",
+                     "status":  "completed",
+                     "conclusion":  "failure",
+                     "created_at":  "2026-07-13T09:02:13Z",
+                     "started_at":  "2026-07-13T09:02:16Z",
+                     "completed_at":  "2026-07-13T09:02:58Z",
+                     "name":  "build",
+                     "steps":  [
+                                   {
+                                       "name":  "Set up job",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  1,
+                                       "started_at":  "2026-07-13T09:02:17Z",
+                                       "completed_at":  "2026-07-13T09:02:17Z"
+                                   },
+                                   {
+                                       "name":  "Checkout code",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  2,
+                                       "started_at":  "2026-07-13T09:02:17Z",
+                                       "completed_at":  "2026-07-13T09:02:18Z"
+                                   },
+                                   {
+                                       "name":  "Set up Node.js",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  3,
+                                       "started_at":  "2026-07-13T09:02:18Z",
+                                       "completed_at":  "2026-07-13T09:02:23Z"
+                                   },
+                                   {
+                                       "name":  "Install dependencies",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  4,
+                                       "started_at":  "2026-07-13T09:02:23Z",
+                                       "completed_at":  "2026-07-13T09:02:41Z"
+                                   },
+                                   {
+                                       "name":  "Install eas-cli",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  5,
+                                       "started_at":  "2026-07-13T09:02:41Z",
+                                       "completed_at":  "2026-07-13T09:02:54Z"
+                                   },
+                                   {
+                                       "name":  "Build Android APK with EAS Remote",
+                                       "status":  "completed",
+                                       "conclusion":  "failure",
+                                       "number":  6,
+                                       "started_at":  "2026-07-13T09:02:54Z",
+                                       "completed_at":  "2026-07-13T09:02:56Z"
+                                   },
+                                   {
+                                       "name":  "Download APK",
+                                       "status":  "completed",
+                                       "conclusion":  "skipped",
+                                       "number":  7,
+                                       "started_at":  "2026-07-13T09:02:56Z",
+                                       "completed_at":  "2026-07-13T09:02:56Z"
+                                   },
+                                   {
+                                       "name":  "Upload APK artifact",
+                                       "status":  "completed",
+                                       "conclusion":  "skipped",
+                                       "number":  8,
+                                       "started_at":  "2026-07-13T09:02:56Z",
+                                       "completed_at":  "2026-07-13T09:02:56Z"
+                                   },
+                                   {
+                                       "name":  "Post Set up Node.js",
+                                       "status":  "completed",
+                                       "conclusion":  "skipped",
+                                       "number":  15,
+                                       "started_at":  "2026-07-13T09:02:56Z",
+                                       "completed_at":  "2026-07-13T09:02:56Z"
+                                   },
+                                   {
+                                       "name":  "Post Checkout code",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  16,
+                                       "started_at":  "2026-07-13T09:02:56Z",
+                                       "completed_at":  "2026-07-13T09:02:56Z"
+                                   },
+                                   {
+                                       "name":  "Complete job",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  17,
+                                       "started_at":  "2026-07-13T09:02:56Z",
+                                       "completed_at":  "2026-07-13T09:02:56Z"
+                                   }
+                               ],
+                     "check_run_url":  "https://api.github.com/repos/cyrus3035/cadon-field/check-runs/86775656863",
+                     "labels":  [
+                                    "ubuntu-latest"
+                                ],
+                     "runner_id":  1000000001,
+                     "runner_name":  "GitHub Actions 1000000001",
+                     "runner_group_id":  0,
+                     "runner_group_name":  "GitHub Actions"
+                 }
+             ]
+}

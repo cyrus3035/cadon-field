@@ -1,4 +1,4 @@
-name: Build Android Debug APK
+name: Build CadonField Debug APK (Gradle Cloud)
 
 on:
   push:
@@ -14,32 +14,34 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Node.js
+    - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: 20.x
         cache: 'npm'
 
     - name: Install dependencies
-      run: npm install
+      run: npm ci
 
-    - name: Install eas-cli
-      run: npm install -g eas-cli
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        packages: |
+          build-tools;34.0.0
+          platforms;android-35
 
-    - name: Build Android APK with EAS Remote
-      run: eas build --platform android --profile development --wait
-      env:
-        EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    - name: Run expo prebuild
+      run: npx expo prebuild --platform android --no-install
 
-    - name: Download APK
+    - name: Build Android APK
       run: |
-        eas build:artifact:download --platform android --profile development --latest --output CadonField-debug.apk
-      env:
-        EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        cd android
+        ./gradlew assembleDebug
+        cd ..
 
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: CadonField-debug-apk
-        path: CadonField-debug.apk
+        path: android/app/build/outputs/apk/debug/app-debug.apk
         retention-days: 14
