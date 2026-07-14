@@ -22,10 +22,27 @@ jobs:
     - name: Install dependencies
       run: npm install
 
+    - name: Fix react-native-webview ESM issue for Node 24
+      run: |
+        node -e "
+        const fs = require('fs');
+        const f = 'node_modules/react-native-webview/index.js';
+        if (fs.existsSync(f)) {
+          let c = fs.readFileSync(f, 'utf8');
+          if (c.includes('import ')) {
+            c = c.replace(/import (\w+) from '([^']+)';/g, \"const $1 = require('$2').default || require('$2');\");
+            c = c.replace(/export \{ (\w+) \};/g, 'module.exports.$1 = $1;');
+            c = c.replace(/export default (\w+);/g, 'module.exports = $1;');
+            fs.writeFileSync(f, c);
+            console.log('Patched react-native-webview/index.js to CommonJS');
+          }
+        }
+        "
+
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Install Android build-tools
+    - name: Install Android SDK packages
       run: sdkmanager "build-tools;34.0.0" "platforms;android-35"
 
     - name: Run expo prebuild
