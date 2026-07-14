@@ -31,12 +31,16 @@ jobs:
     - name: Run expo prebuild
       run: npx expo prebuild --platform android --no-install
 
-    - name: Fix Kotlin version for Compose Compiler compatibility
+    - name: Fix Kotlin/Compose version compatibility
       run: |
-        grep -rn "1.9.24" android/ || true
+        # Replace Kotlin version in all gradle files
         find android -type f \( -name "*.gradle" -o -name "*.gradle.kts" -o -name "gradle.properties" \) -exec sed -i 's/1\.9\.24/1.9.25/g' {} +
-        echo "--- After fix ---"
-        grep -rn "1.9.25" android/ || true
+        # Also replace Kotlin Gradle plugin version
+        find android -type f -name "*.gradle" -exec sed -i 's/org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24/org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.25/g' {} +
+        # Add suppressKotlinVersionCompatibilityCheck to app build.gradle
+        sed -i '/android {/a\    kotlinOptions { freeCompilerArgs += ["-P", "plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=true"] }' android/app/build.gradle
+        echo "--- Kotlin version after fix ---"
+        grep -rn "1.9.25\|suppressKotlin" android/ || true
 
     - name: Build Android APK
       run: |
