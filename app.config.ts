@@ -7,13 +7,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: 'cadon-field',
   version: '1.0.0',
   orientation: 'portrait',
-  icon: './assets/icon.png',
   userInterfaceStyle: 'light',
-  splash: {
-    image: './assets/splash.png',
-    resizeMode: 'contain',
-    backgroundColor: '#ffffff'
-  },
   updates: {
     fallbackToCacheTimeout: 0
   },
@@ -29,17 +23,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     package: 'com.cadonfield.app',
     versionCode: 1,
     targetSdkVersion: 35,
-    adaptiveIcon: {
-      foregroundImage: './assets/adaptive-icon.png',
-      backgroundColor: '#ffffff'
-    },
     permissions: [
       'android.permission.CAMERA',
       'android.permission.RECORD_AUDIO'
     ]
-  },
-  web: {
-    favicon: './assets/favicon.png'
   },
   plugins: [
     'expo-router',
