@@ -33,10 +33,18 @@ jobs:
 
     - name: Fix Kotlin/Compose version compatibility
       run: |
-        # Downgrade Compose Compiler from 1.5.15 to 1.5.14 (compatible with Kotlin 1.9.24)
-        find android -type f \( -name "*.gradle" -o -name "*.gradle.kts" \) -exec sed -i 's/1\.5\.15/1.5.14/g' {} +
-        echo "--- Compose Compiler version after fix ---"
-        grep -rn "1.5.14\|composeOptions" android/ || true
+        cat >> android/build.gradle << 'EOF'
+
+        subprojects {
+            tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+                kotlinOptions {
+                    freeCompilerArgs += ["-P", "plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=true"]
+                }
+            }
+        }
+        EOF
+        echo "--- Added suppressKotlinVersionCompatibilityCheck to root build.gradle ---"
+        tail -10 android/build.gradle
 
     - name: Build Android APK
       run: |
