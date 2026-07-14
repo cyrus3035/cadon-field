@@ -32,7 +32,11 @@ jobs:
       run: npx expo prebuild --platform android --no-install
 
     - name: Fix Kotlin version for Compose Compiler compatibility
-      run: sed -i 's/kotlinVersion = "[0-9.]*"/kotlinVersion = "1.9.25"/g' android/build.gradle
+      run: |
+        grep -rn "1.9.24" android/ || true
+        find android -type f \( -name "*.gradle" -o -name "*.gradle.kts" -o -name "gradle.properties" \) -exec sed -i 's/1\.9\.24/1.9.25/g' {} +
+        echo "--- After fix ---"
+        grep -rn "1.9.25" android/ || true
 
     - name: Build Android APK
       run: |
