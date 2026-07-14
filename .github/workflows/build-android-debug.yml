@@ -22,6 +22,22 @@ jobs:
     - name: Install dependencies
       run: npm install
 
+    - name: Patch react-native-webview/index.js ESM -> CJS (Node 24 compatibility)
+      run: |
+        f="node_modules/react-native-webview/index.js"
+        if [ -f "$f" ]; then
+          cat > "$f" << 'PATCH_EOF'
+        const WebView = require('./lib/WebView').default;
+        module.exports = WebView;
+        module.exports.WebView = WebView;
+        module.exports.default = WebView;
+        PATCH_EOF
+          echo "--- Patched react-native-webview/index.js to CJS ---"
+          cat "$f"
+        else
+          echo "--- WARNING: $f not found ---"
+        fi
+
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
@@ -46,28 +62,15 @@ jobs:
         echo "--- Added suppressKotlinVersionCompatibilityCheck to root build.gradle ---"
         tail -10 android/build.gradle
 
-    - name: Create assets directory and bundle JS into APK (fix Unable to load script)
-      run: |
-        mkdir -p android/app/src/main/assets
-        mkdir -p android/app/src/main/res
-        npx react-native bundle \
-          --platform android \
-          --dev false \
-          --entry-file index.js \
-          --bundle-output android/app/src/main/assets/index.android.bundle \
-          --assets-dest android/app/src/main/res
-        echo "--- JS bundle created ---"
-        ls -lh android/app/src/main/assets/
-        echo "--- Assets count ---"
-        find android/app/src/main/res -type f | wc -l
-
-    - name: Build Android APK (with bundleInDebug=true as second safety net)
+    - name: Build Android APK (bundleInDebug=true embeds JS inside APK)
       run: |
         cd android
         ./gradlew assembleDebug -PbundleInDebug=true
         cd ..
-        echo "--- APK output ---"
+        echo "--- APK output listing ---"
         ls -lh android/app/build/outputs/apk/debug/
+        echo "--- Check if bundle inside APK assets (presence of index.android.bundle) ---"
+        unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep -i "bundle" || echo "WARNING: no bundle found in APK assets"
 
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
