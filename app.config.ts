@@ -3,7 +3,7 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'cadon-field',
-  displayName: 'CadonField',
+  displayName: 'CADonField',
   slug: 'cadon-field',
   version: '1.0.0',
   orientation: 'portrait',
@@ -29,7 +29,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ]
   },
   plugins: [
-    'expo-router',
     [
       'expo-location',
       {

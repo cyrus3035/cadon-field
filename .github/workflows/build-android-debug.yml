@@ -1,4 +1,4 @@
-name: Build CadonField Debug APK (Gradle Cloud)
+name: Build CADonField Debug APK (Gradle Cloud)
 
 on:
   push:
@@ -46,15 +46,32 @@ jobs:
         echo "--- Added suppressKotlinVersionCompatibilityCheck to root build.gradle ---"
         tail -10 android/build.gradle
 
-    - name: Build Android APK
+    - name: Create assets directory and bundle JS into APK (fix Unable to load script)
+      run: |
+        mkdir -p android/app/src/main/assets
+        mkdir -p android/app/src/main/res
+        npx react-native bundle \
+          --platform android \
+          --dev false \
+          --entry-file index.js \
+          --bundle-output android/app/src/main/assets/index.android.bundle \
+          --assets-dest android/app/src/main/res
+        echo "--- JS bundle created ---"
+        ls -lh android/app/src/main/assets/
+        echo "--- Assets count ---"
+        find android/app/src/main/res -type f | wc -l
+
+    - name: Build Android APK (with bundleInDebug=true as second safety net)
       run: |
         cd android
-        ./gradlew assembleDebug
+        ./gradlew assembleDebug -PbundleInDebug=true
         cd ..
+        echo "--- APK output ---"
+        ls -lh android/app/build/outputs/apk/debug/
 
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
-        name: CadonField-debug-apk
+        name: CADonField-debug-apk
         path: android/app/build/outputs/apk/debug/app-debug.apk
         retention-days: 14
