@@ -35,7 +35,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         locationAlwaysAndWhenInUsePermission: 'Allow $(PRODUCT_NAME) to access your location'
       }
-    ],
-    'react-native-maps'
+    ]
   ]
 });
