@@ -31,6 +31,9 @@ jobs:
     - name: Run expo prebuild
       run: npx expo prebuild --platform android --no-install
 
+    - name: Fix Kotlin version for Compose Compiler compatibility
+      run: sed -i 's/kotlinVersion = "[0-9.]*"/kotlinVersion = "1.9.25"/g' android/build.gradle
+
     - name: Build Android APK
       run: |
         cd android
