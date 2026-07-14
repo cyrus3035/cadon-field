@@ -32,20 +32,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#ffffff'
-    }
+    },
+    permissions: [
+      'android.permission.CAMERA',
+      'android.permission.RECORD_AUDIO'
+    ]
   },
   web: {
     favicon: './assets/favicon.png'
   },
   plugins: [
     'expo-router',
-    [
-      'react-native-webview',
-      {
-        androidCameraPermission: 'Allow $(PRODUCT_NAME) to access camera',
-        androidMicrophonePermission: 'Allow $(PRODUCT_NAME) to access microphone'
-      }
-    ],
     [
       'expo-location',
       {
