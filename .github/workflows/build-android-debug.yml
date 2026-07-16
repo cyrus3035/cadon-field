@@ -46,30 +46,11 @@ jobs:
           EOF
           echo "--- Patch applied ---"
 
-      - name: Build JS bundle with experimental-vm-modules (Node 24 ESM fix)
-        run: |
-          echo "--- Building JS bundle ---"
-          mkdir -p android/app/src/main/assets
-          NODE_OPTIONS=--experimental-vm-modules npx react-native bundle --platform android --dev true --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
-          echo "--- Bundle output listing ---"
-          ls -lh android/app/src/main/assets/
-          echo "--- Bundle size verification ---"
-          if [ ! -f android/app/src/main/assets/index.android.bundle ]; then
-            echo "ERROR: index.android.bundle not found!"
-            exit 1
-          fi
-          BUNDLE_SIZE=$(wc -c < android/app/src/main/assets/index.android.bundle)
-          echo "Bundle size: $BUNDLE_SIZE bytes"
-          if [ $BUNDLE_SIZE -lt 1000 ]; then
-            echo "ERROR: Bundle size too small - likely empty or corrupted!"
-            exit 1
-          fi
-
       - name: Build Android APK with Gradle
         run: |
           echo "--- Building APK ---"
           cd android
-          ./gradlew assembleDebug -x bundleDebugJsAndAssets 2>&1 | tail -80
+          ./gradlew assembleDebug 2>&1 | tail -100
 
       - name: Verify APK contains JS bundle
         run: |
