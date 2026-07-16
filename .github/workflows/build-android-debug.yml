@@ -62,21 +62,18 @@ jobs:
         echo "--- Added suppressKotlinVersionCompatibilityCheck to root build.gradle ---"
         tail -10 android/build.gradle
 
-    - name: Debug - Check environment
+    - name: Build JS bundle with experimental-vm-modules (Node 24 ESM fix)
       run: |
-        echo "--- Node version ---"
-        node --version
-        echo "--- Java version ---"
-        java -version
-        echo "--- ANDROID_HOME ---"
-        echo $ANDROID_HOME
-        echo "--- Gradle version ---"
-        cd android && ./gradlew --version && cd ..
+        echo "--- Building JS bundle ---"
+        mkdir -p android/app/src/main/assets
+        NODE_OPTIONS=--experimental-vm-modules npx react-native bundle --platform android --dev true --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+        echo "--- Bundle output listing ---"
+        ls -lh android/app/src/main/assets/
 
-    - name: Build Android APK (bundleInDebug=true embeds JS inside APK)
+    - name: Build Android APK
       run: |
         cd android
-        ./gradlew assembleDebug -PbundleInDebug=true 2>&1 | tail -100
+        ./gradlew assembleDebug
         cd ..
         echo "--- APK output listing ---"
         ls -lh android/app/build/outputs/apk/debug/
