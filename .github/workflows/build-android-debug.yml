@@ -2,96 +2,93 @@ name: Build CADonField Debug APK (Gradle Cloud)
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20.x
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    - name: Install dependencies
-      run: npm install
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 35
+          build-tools: 35.0.0
+          ndk: 26.1.10909125
 
-    - name: Patch react-native-webview/index.js ESM -> CJS (Node 24 compatibility)
-      run: |
-        f="node_modules/react-native-webview/index.js"
-        if [ -f "$f" ]; then
-          cat > "$f" << 'PATCH_EOF'
-        const WebView = require('./lib/WebView').default;
-        module.exports = WebView;
-        module.exports.WebView = WebView;
-        module.exports.default = WebView;
-        PATCH_EOF
-          echo "--- Patched react-native-webview/index.js to CJS ---"
-          cat "$f"
-        else
-          echo "--- WARNING: $f not found ---"
-        fi
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: 'npm'
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
+      - name: Install npm dependencies
+        run: |
+          echo "--- Installing npm dependencies ---"
+          npm ci
+          echo "--- npm list ---"
+          npm list --depth=1 2>&1 | head -30
 
-    - name: Install Android SDK packages
-      run: sdkmanager "build-tools;34.0.0" "platforms;android-35"
+      - name: Patch react-native-webview ESM for Node 24 compatibility
+        run: |
+          echo "--- Patching react-native-webview for Node 24 ---"
+          cat > node_modules/react-native-webview/index.js << 'EOF'
+          const WebView = require('./lib/WebView').default;
+          module.exports = WebView;
+          EOF
+          echo "--- Patch applied ---"
 
-    - name: Run expo prebuild
-      run: npx expo prebuild --platform android --no-install
+      - name: Build JS bundle with experimental-vm-modules (Node 24 ESM fix)
+        run: |
+          echo "--- Building JS bundle ---"
+          mkdir -p android/app/src/main/assets
+          NODE_OPTIONS=--experimental-vm-modules npx react-native bundle --platform android --dev true --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+          echo "--- Bundle output listing ---"
+          ls -lh android/app/src/main/assets/
+          echo "--- Bundle size verification ---"
+          if [ ! -f android/app/src/main/assets/index.android.bundle ]; then
+            echo "ERROR: index.android.bundle not found!"
+            exit 1
+          fi
+          BUNDLE_SIZE=$(wc -c < android/app/src/main/assets/index.android.bundle)
+          echo "Bundle size: $BUNDLE_SIZE bytes"
+          if [ $BUNDLE_SIZE -lt 1000 ]; then
+            echo "ERROR: Bundle size too small - likely empty or corrupted!"
+            exit 1
+          fi
 
-    - name: Fix Kotlin/Compose version compatibility
-      run: |
-        cat >> android/build.gradle << 'EOF'
+      - name: Build Android APK with Gradle
+        run: |
+          echo "--- Building APK ---"
+          cd android
+          ./gradlew assembleDebug -x bundleDebugJsAndAssets 2>&1 | tail -80
 
-        subprojects {
-            tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-                kotlinOptions {
-                    freeCompilerArgs += ["-P", "plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=true"]
-                }
-            }
-        }
-        EOF
-        echo "--- Added suppressKotlinVersionCompatibilityCheck to root build.gradle ---"
-        tail -10 android/build.gradle
+      - name: Verify APK contains JS bundle
+        run: |
+          echo "--- Verifying APK contents ---"
+          APK_PATH=$(find android/app/build/outputs/apk/debug -name "*.apk" | head -1)
+          echo "APK path: $APK_PATH"
+          if [ -z "$APK_PATH" ]; then
+            echo "ERROR: APK not found!"
+            exit 1
+          fi
+          unzip -l "$APK_PATH" | grep "index.android.bundle"
+          if [ $? -ne 0 ]; then
+            echo "ERROR: index.android.bundle not found in APK!"
+            exit 1
+          fi
+          echo "SUCCESS: index.android.bundle is embedded in APK"
 
-    - name: Build JS bundle with experimental-vm-modules (Node 24 ESM fix)
-      run: |
-        echo "--- Building JS bundle ---"
-        mkdir -p android/app/src/main/assets
-        NODE_OPTIONS=--experimental-vm-modules npx react-native bundle --platform android --dev true --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
-        echo "--- Bundle output listing ---"
-        ls -lh android/app/src/main/assets/
-
-    - name: Build Android APK
-      run: |
-        cd android
-        ./gradlew assembleDebug
-        cd ..
-        echo "--- APK output listing ---"
-        ls -lh android/app/build/outputs/apk/debug/
-
-    - name: Verify bundle is packaged in APK
-      run: |
-        echo "--- Checking for index.android.bundle inside APK ---"
-        BUNDLE_FOUND=$(unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep -c "index.android.bundle")
-        if [ "$BUNDLE_FOUND" -gt 0 ]; then
-          echo "SUCCESS: index.android.bundle found in APK"
-        else
-          echo "FAILURE: index.android.bundle NOT found in APK"
-          exit 1
-        fi
-
-    - name: Upload APK artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: CADonField-debug-apk
-        path: android/app/build/outputs/apk/debug/app-debug.apk
-        retention-days: 14
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cadonfield-debug.apk
+          path: android/app/build/outputs/apk/debug/*.apk
