@@ -62,20 +62,20 @@ jobs:
         echo "--- Added suppressKotlinVersionCompatibilityCheck to root build.gradle ---"
         tail -10 android/build.gradle
 
-    - name: Configure gradle.properties to enable bundleInDebug
+    - name: Generate JS bundle using expo export (offical Expo way, Node 24 safe)
       run: |
-        echo "react.bundleInDebug=true" >> android/gradle.properties
-        echo "react.enableHermes=false" >> android/gradle.properties
-        echo "--- gradle.properties after changes ---"
-        cat android/gradle.properties
+        npx expo export --platform android --output-dir dist
+        echo "--- expo export output ---"
+        ls -lh dist/
+        ls -lh dist/android/
 
-    - name: Build JS bundle (index.android.bundle) using gradle task
+    - name: Copy JS bundle and assets to android/app/src/main/assets
       run: |
-        cd android
-        ./gradlew bundleDebugJsAndAssets
-        cd ..
-        echo "--- JS bundle generation output ---"
-        ls -lh android/app/build/generated/assets/react/debug/
+        mkdir -p android/app/src/main/assets
+        cp dist/android/index.android.bundle android/app/src/main/assets/
+        cp -r dist/android/assets/* android/app/src/main/assets/ 2>/dev/null || true
+        echo "--- Assets directory listing ---"
+        ls -lh android/app/src/main/assets/
 
     - name: Build Android APK
       run: |
