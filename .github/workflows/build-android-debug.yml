@@ -17,32 +17,17 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 20.x
+        node-version: 18.x
+        cache: 'npm'
 
     - name: Install dependencies
       run: npm install
-
-    - name: Patch react-native-webview/index.js ESM -> CJS (Node 24 compatibility)
-      run: |
-        f="node_modules/react-native-webview/index.js"
-        if [ -f "$f" ]; then
-          cat > "$f" << 'PATCH_EOF'
-        const WebView = require('./lib/WebView').default;
-        module.exports = WebView;
-        module.exports.WebView = WebView;
-        module.exports.default = WebView;
-        PATCH_EOF
-          echo "--- Patched react-native-webview/index.js to CJS ---"
-          cat "$f"
-        else
-          echo "--- WARNING: $f not found ---"
-        fi
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
     - name: Install Android SDK packages
-      run: sdkmanager "build-tools;34.0.0" "platforms;android-35"
+      run: sdkmanager "build-tools;34.0.0" "platforms;android-35" "platform-tools"
 
     - name: Run expo prebuild
       run: npx expo prebuild --platform android --no-install
@@ -62,10 +47,18 @@ jobs:
         echo "--- Added suppressKotlinVersionCompatibilityCheck to root build.gradle ---"
         tail -10 android/build.gradle
 
-    - name: Build Android APK (bundleInDebug=true embeds JS inside APK)
+    - name: Build JS bundle manually using react-native bundle
+      run: |
+        echo "--- Building JS bundle ---"
+        mkdir -p android/app/src/main/assets
+        npx react-native bundle --platform android --dev true --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+        echo "--- Bundle output listing ---"
+        ls -lh android/app/src/main/assets/
+
+    - name: Build Android APK
       run: |
         cd android
-        ./gradlew assembleDebug -PbundleInDebug=true
+        ./gradlew assembleDebug
         cd ..
         echo "--- APK output listing ---"
         ls -lh android/app/build/outputs/apk/debug/
