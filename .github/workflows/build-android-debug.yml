@@ -62,25 +62,10 @@ jobs:
         echo "--- Added suppressKotlinVersionCompatibilityCheck to root build.gradle ---"
         tail -10 android/build.gradle
 
-    - name: Generate JS bundle using expo export (offical Expo way, Node 24 safe)
-      run: |
-        npx expo export --platform android --output-dir dist
-        echo "--- expo export output ---"
-        ls -lh dist/
-        ls -lh dist/android/
-
-    - name: Copy JS bundle and assets to android/app/src/main/assets
-      run: |
-        mkdir -p android/app/src/main/assets
-        cp dist/android/index.android.bundle android/app/src/main/assets/
-        cp -r dist/android/assets/* android/app/src/main/assets/ 2>/dev/null || true
-        echo "--- Assets directory listing ---"
-        ls -lh android/app/src/main/assets/
-
-    - name: Build Android APK
+    - name: Build Android APK (bundleInDebug=true embeds JS inside APK)
       run: |
         cd android
-        ./gradlew assembleDebug
+        ./gradlew assembleDebug -PbundleInDebug=true
         cd ..
         echo "--- APK output listing ---"
         ls -lh android/app/build/outputs/apk/debug/
