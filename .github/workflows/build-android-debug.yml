@@ -14,14 +14,28 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Node.js 20.x (avoid ESM compatibility issues)
+    - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: 20.x
-        cache: 'npm'
 
     - name: Install dependencies
       run: npm install
+
+    - name: Patch react-native-webview/index.js ESM -> CJS
+      run: |
+        f="node_modules/react-native-webview/index.js"
+        if [ -f "$f" ]; then
+          cat > "$f" << 'PATCH_EOF'
+        const WebView = require('./lib/WebView').default;
+        module.exports = WebView;
+        module.exports.WebView = WebView;
+        module.exports.default = WebView;
+        PATCH_EOF
+          echo "--- Patched react-native-webview/index.js to CJS ---"
+        else
+          echo "--- WARNING: $f not found ---"
+        fi
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
@@ -32,7 +46,7 @@ jobs:
     - name: Run expo prebuild
       run: npx expo prebuild --platform android --no-install
 
-    - name: Verify app_name in strings.xml (software name check)
+    - name: Verify app_name in strings.xml (software name should be CADonField)
       run: |
         echo "--- Checking app_name in strings.xml ---"
         cat android/app/src/main/res/values/strings.xml | grep -n 'app_name'
@@ -51,29 +65,15 @@ jobs:
         EOF
         echo "--- Added suppressKotlinVersionCompatibilityCheck ---"
 
-    - name: Force JS bundle embedding in debug build
-      run: |
-        echo "--- Forcing debuggableVariants = [] ---"
-        sed -i.bak '/react {/a\    debuggableVariants = []' android/app/build.gradle
-        echo "--- Verifying react block in build.gradle ---"
-        cat android/app/build.gradle | grep -A5 'react {'
-
-    - name: Manually generate JS bundle
-      run: |
-        echo "--- Manually generating index.android.bundle ---"
-        npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
-        echo "--- Verifying bundle was created ---"
-        ls -lh android/app/src/main/assets/index.android.bundle
-
-    - name: Build Android APK
+    - name: Build Android APK (bundleInDebug=true embeds JS inside APK)
       run: |
         cd android
-        ./gradlew assembleDebug --no-daemon
+        ./gradlew assembleDebug -PbundleInDebug=true
         cd ..
         echo "--- APK output listing ---"
         ls -lh android/app/build/outputs/apk/debug/
-        echo "--- Check bundle inside APK ---"
-        unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep -i "bundle" || echo "WARNING: no bundle found"
+        echo "--- Check if bundle inside APK assets ---"
+        unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep -i "bundle" || echo "WARNING: no bundle found in APK assets"
 
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
