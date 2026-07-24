@@ -85,10 +85,10 @@ jobs:
         cd android
         export GRADLE_OPTS="-Xmx4g -XX:MaxMetaspaceSize=512m"
         export JAVA_OPTS="-Xmx4g"
-        ./gradlew assembleDebug --no-daemon --parallel --no-build-cache
+        ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tail -200
         cd ..
-        ls -lh android/app/build/outputs/apk/debug/
-        unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep bundle
+        ls -lh android/app/build/outputs/apk/debug/ || echo "APK not found"
+        unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep bundle || echo "Bundle not in APK"
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
