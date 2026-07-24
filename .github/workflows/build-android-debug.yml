@@ -90,6 +90,18 @@ jobs:
         ls -lh android/app/build/outputs/apk/debug/ || echo "APK not found"
         unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep bundle || echo "Bundle not in APK"
 
+    - name: Verify APK exists before upload
+      run: |
+        echo "=== Checking APK file ==="
+        ls -la android/app/build/outputs/apk/debug/
+        if [ -f "android/app/build/outputs/apk/debug/app-debug.apk" ]; then
+          echo "APK file exists"
+          wc -c android/app/build/outputs/apk/debug/app-debug.apk
+        else
+          echo "ERROR: APK file not found!"
+          exit 1
+        fi
+
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
