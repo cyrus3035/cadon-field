@@ -34,7 +34,6 @@ jobs:
         module.exports.default = WebView;
         PATCH_EOF
           echo "--- Patched react-native-webview/index.js to CJS ---"
-          cat "$f"
         else
           echo "--- WARNING: $f not found ---"
         fi
@@ -60,25 +59,22 @@ jobs:
             }
         }
         EOF
-        echo "--- Added suppressKotlinVersionCompatibilityCheck to root build.gradle ---"
-        tail -10 android/build.gradle
+        echo "--- Added suppressKotlinVersionCompatibilityCheck ---"
 
     - name: Force JS bundle embedding in debug build
       run: |
-        echo "--- Forcing debuggableVariants = [] to ensure JS bundle is embedded ---"
+        echo "--- Forcing debuggableVariants = [] ---"
         sed -i.bak '/react {/a\    debuggableVariants = []' android/app/build.gradle
-        cat android/app/build.gradle | grep -A 5 "react {"
 
-    - name: Build Android APK (bundleInDebug=true embeds JS inside APK)
+    - name: Build Android APK
       run: |
         cd android
-        NODE_OPTIONS="--experimental-vm-modules" ./gradlew bundleDebugJsAndAssets --no-daemon
-        NODE_OPTIONS="--experimental-vm-modules" ./gradlew assembleDebug -PbundleInDebug=true --no-daemon
+        ./gradlew assembleDebug -PbundleInDebug=true --no-daemon
         cd ..
         echo "--- APK output listing ---"
         ls -lh android/app/build/outputs/apk/debug/
-        echo "--- Check if bundle inside APK assets (presence of index.android.bundle) ---"
-        unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep -i "bundle" || echo "WARNING: no bundle found in APK assets"
+        echo "--- Check bundle inside APK ---"
+        unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep -i "bundle" || echo "WARNING: no bundle found"
 
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
