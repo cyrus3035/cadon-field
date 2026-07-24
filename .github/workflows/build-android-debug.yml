@@ -47,6 +47,11 @@ jobs:
     - name: Run expo prebuild
       run: npx expo prebuild --platform android --no-install
 
+    - name: Verify app_name in strings.xml (software name check)
+      run: |
+        echo "--- Checking app_name in strings.xml ---"
+        grep -n 'app_name' android/app/src/main/res/values/strings.xml
+
     - name: Fix Kotlin/Compose version compatibility
       run: |
         cat >> android/build.gradle << 'EOF'
@@ -65,11 +70,13 @@ jobs:
       run: |
         echo "--- Forcing debuggableVariants = [] ---"
         sed -i.bak '/react {/a\    debuggableVariants = []' android/app/build.gradle
+        echo "--- Verifying react block in build.gradle ---"
+        grep -A5 'react {' android/app/build.gradle
 
-    - name: Build Android APK
+    - name: Build Android APK (NODE_OPTIONS fixes Node 24 ESM compatibility)
       run: |
         cd android
-        ./gradlew assembleDebug -PbundleInDebug=true --no-daemon
+        NODE_OPTIONS="--experimental-vm-modules" ./gradlew assembleDebug -PbundleInDebug=true --no-daemon
         cd ..
         echo "--- APK output listing ---"
         ls -lh android/app/build/outputs/apk/debug/
