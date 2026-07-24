@@ -81,10 +81,17 @@ jobs:
 
     - name: Build APK
       run: |
+        echo "=== Node.js version ==="
+        node --version
+        echo "=== npm version ==="
+        npm --version
+        echo "=== PATH ==="
+        echo $PATH
         cd android
         export GRADLE_OPTS="-Xmx4g -XX:MaxMetaspaceSize=512m"
         export JAVA_OPTS="-Xmx4g"
-        ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tail -200
+        export PATH="$PATH:$HOME/node_modules/.bin"
+        ./gradlew assembleDebug --no-daemon --info 2>&1 | tail -300
         cd ..
         echo "=== Searching for APK files ==="
         find android -name "*.apk" -type f 2>/dev/null || echo "No APK files found"
