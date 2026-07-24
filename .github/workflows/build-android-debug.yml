@@ -44,8 +44,8 @@ jobs:
     - name: Install Android SDK packages
       run: sdkmanager "build-tools;34.0.0" "platforms;android-35"
 
-    - name: Run expo prebuild
-      run: npx expo prebuild --platform android --no-install
+    - name: Run expo prebuild (NODE_OPTIONS for Node 24 ESM compatibility)
+      run: NODE_OPTIONS="--experimental-vm-modules" npx expo prebuild --platform android --no-install
 
     - name: Verify app_name in strings.xml (software name check)
       run: |
