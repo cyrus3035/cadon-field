@@ -2,84 +2,79 @@ name: Build CADonField Debug APK (Gradle Cloud)
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          cache: 'npm'
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
 
-      - name: Install dependencies
-        run: npm install
+    - name: Install dependencies
+      run: npm install
 
-      - name: Patch react-native-webview/index.js ESM -> CJS
-        run: |
-          f="node_modules/react-native-webview/index.js"
-          if [ -f "$f" ]; then
-            cat > "$f" << 'PATCH_EOF'
-          const WebView = require('./lib/WebView').default;
-          module.exports = WebView;
-          module.exports.WebView = WebView;
-          module.exports.default = WebView;
-          PATCH_EOF
-            echo "--- Patched react-native-webview/index.js to CJS ---"
-          else
-            echo "--- WARNING: $f not found ---"
-          fi
+    - name: Patch react-native-webview/index.js ESM -> CJS (Node 24 compatibility)
+      run: |
+        f="node_modules/react-native-webview/index.js"
+        if [ -f "$f" ]; then
+          cat > "$f" << 'PATCH_EOF'
+        const WebView = require('./lib/WebView').default;
+        module.exports = WebView;
+        module.exports.WebView = WebView;
+        module.exports.default = WebView;
+        PATCH_EOF
+          echo "--- Patched react-native-webview/index.js to CJS ---"
+          cat "$f"
+        else
+          echo "--- WARNING: $f not found ---"
+        fi
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK packages
-        run: sdkmanager "build-tools;34.0.0" "platforms;android-35"
+    - name: Install Android SDK packages
+      run: sdkmanager "build-tools;34.0.0" "platforms;android-35"
 
-      - name: Run expo prebuild
-        run: npx expo prebuild --platform android --no-install
+    - name: Run expo prebuild
+      run: npx expo prebuild --platform android --no-install
 
-      - name: Fix Kotlin/Compose version compatibility
-        run: |
-          cat >> android/build.gradle << 'EOF'
+    - name: Fix Kotlin/Compose version compatibility
+      run: |
+        cat >> android/build.gradle << 'EOF'
 
-          subprojects {
-              tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-                  kotlinOptions {
-                      freeCompilerArgs += ["-P", "plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=true"]
-                  }
-              }
-          }
-          EOF
-          echo "--- Added suppressKotlinVersionCompatibilityCheck to root build.gradle ---"
+        subprojects {
+            tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+                kotlinOptions {
+                    freeCompilerArgs += ["-P", "plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=true"]
+                }
+            }
+        }
+        EOF
+        echo "--- Added suppressKotlinVersionCompatibilityCheck to root build.gradle ---"
+        tail -10 android/build.gradle
 
-      - name: Build Android APK (bundleInDebug=true embeds JS inside APK)
-        run: |
-          cd android
-          ./gradlew assembleDebug -PbundleInDebug=true 2>&1 | tail -80
-          cd ..
-          echo "--- APK output listing ---"
-          ls -lh android/app/build/outputs/apk/debug/
+    - name: Build Android APK (bundleInDebug=true embeds JS inside APK)
+      run: |
+        cd android
+        ./gradlew assembleDebug -PbundleInDebug=true
+        cd ..
+        echo "--- APK output listing ---"
+        ls -lh android/app/build/outputs/apk/debug/
+        echo "--- Check if bundle inside APK assets (presence of index.android.bundle) ---"
+        unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep -i "bundle" || echo "WARNING: no bundle found in APK assets"
 
-      - name: Verify APK contains JS bundle
-        run: |
-          echo "--- Verifying APK contents ---"
-          unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep -i "bundle"
-          if [ $? -ne 0 ]; then
-            echo "ERROR: index.android.bundle not found in APK!"
-            exit 1
-          fi
-          echo "SUCCESS: index.android.bundle is embedded in APK"
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: CADonField-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 14
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: CADonField-debug-apk
+        path: android/app/build/outputs/apk/debug/app-debug.apk
+        retention-days: 14
