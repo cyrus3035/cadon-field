@@ -14,7 +14,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Node.js
+    - name: Setup Node.js 20.x
       uses: actions/setup-node@v4
       with:
         node-version: 20.x
@@ -22,39 +22,33 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Patch react-native-webview/index.js ESM -> CJS
+    - name: Install Android SDK manually
       run: |
-        f="node_modules/react-native-webview/index.js"
-        if [ -f "$f" ]; then
-          cat > "$f" << 'PATCH_EOF'
-        const WebView = require('./lib/WebView').default;
-        module.exports = WebView;
-        module.exports.WebView = WebView;
-        module.exports.default = WebView;
-        PATCH_EOF
-          echo "--- Patched react-native-webview/index.js to CJS ---"
-        else
-          echo "--- WARNING: $f not found ---"
-        fi
-
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
+        export ANDROID_HOME=$HOME/android-sdk
+        mkdir -p $ANDROID_HOME/cmdline-tools
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdline-tools.zip
+        unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools
+        mv /tmp/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+        echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+        echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+        echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
     - name: Install Android SDK packages
-      run: sdkmanager "build-tools;34.0.0" "platforms;android-35"
+      run: |
+        yes | sdkmanager --licenses
+        sdkmanager "build-tools;34.0.0" "platforms;android-35"
 
     - name: Run expo prebuild
       run: npx expo prebuild --platform android --no-install
 
-    - name: Verify app_name in strings.xml (software name should be CADonField)
+    - name: Verify app_name in strings.xml
       run: |
-        echo "--- Checking app_name in strings.xml ---"
-        cat android/app/src/main/res/values/strings.xml | grep -n 'app_name'
+        echo "--- Checking app_name ---"
+        cat android/app/src/main/res/values/strings.xml | grep app_name
 
-    - name: Fix Kotlin/Compose version compatibility
+    - name: Fix Kotlin/Compose compatibility
       run: |
         cat >> android/build.gradle << 'EOF'
-
         subprojects {
             tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
                 kotlinOptions {
@@ -63,19 +57,16 @@ jobs:
             }
         }
         EOF
-        echo "--- Added suppressKotlinVersionCompatibilityCheck ---"
 
-    - name: Build Android APK (bundleInDebug=true embeds JS inside APK)
+    - name: Build APK
       run: |
         cd android
         ./gradlew assembleDebug -PbundleInDebug=true
         cd ..
-        echo "--- APK output listing ---"
         ls -lh android/app/build/outputs/apk/debug/
-        echo "--- Check if bundle inside APK assets ---"
-        unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep -i "bundle" || echo "WARNING: no bundle found in APK assets"
+        unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep bundle
 
-    - name: Upload APK artifact
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: CADonField-debug-apk
