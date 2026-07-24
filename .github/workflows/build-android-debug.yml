@@ -60,7 +60,8 @@ jobs:
     - name: Force JS bundle embedding in debug build
       run: |
         sed -i '/react {/a\    debuggableVariants = []' android/app/build.gradle
-        cat android/app/build.gradle | grep -A5 'react {'
+        sed -i "s|entryFile = file(\\[\"node\", \"-e\", \"require('expo/scripts/resolveAppEntry')\", projectRoot, \"android\", \"absolute\"\\].execute(null, rootDir).text.trim())|entryFile = file(\"../index.js\")|g" android/app/build.gradle
+        cat android/app/build.gradle | grep -A10 'react {'
 
     - name: Create assets directory and generate JS bundle manually
       run: |
