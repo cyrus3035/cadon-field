@@ -17,13 +17,13 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 20.x
+        node-version: 24.x
         cache: 'npm'
 
     - name: Install dependencies
-      run: npm install
+      run: npm ci
 
-    - name: Patch react-native-webview/index.js ESM -> CJS
+    - name: Patch react-native-webview/index.js ESM -> CJS (Node 24 compatibility)
       run: |
         f="node_modules/react-native-webview/index.js"
         if [ -f "$f" ]; then
@@ -72,8 +72,8 @@ jobs:
     - name: Build Android APK (bundleInDebug=true embeds JS inside APK)
       run: |
         cd android
-        ./gradlew bundleDebugJsAndAssets --no-daemon
-        ./gradlew assembleDebug -PbundleInDebug=true --no-daemon
+        NODE_OPTIONS="--experimental-vm-modules" ./gradlew bundleDebugJsAndAssets --no-daemon
+        NODE_OPTIONS="--experimental-vm-modules" ./gradlew assembleDebug -PbundleInDebug=true --no-daemon
         cd ..
         echo "--- APK output listing ---"
         ls -lh android/app/build/outputs/apk/debug/
