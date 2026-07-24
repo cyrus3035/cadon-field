@@ -21,7 +21,7 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies
-      run: npm ci
+      run: npm install
 
     - name: Patch react-native-webview/index.js ESM -> CJS (Node 24 compatibility)
       run: |
@@ -50,7 +50,7 @@ jobs:
     - name: Verify app_name in strings.xml (software name check)
       run: |
         echo "--- Checking app_name in strings.xml ---"
-        grep -n 'app_name' android/app/src/main/res/values/strings.xml
+        cat android/app/src/main/res/values/strings.xml | grep -n 'app_name'
 
     - name: Fix Kotlin/Compose version compatibility
       run: |
@@ -71,12 +71,19 @@ jobs:
         echo "--- Forcing debuggableVariants = [] ---"
         sed -i.bak '/react {/a\    debuggableVariants = []' android/app/build.gradle
         echo "--- Verifying react block in build.gradle ---"
-        grep -A5 'react {' android/app/build.gradle
+        cat android/app/build.gradle | grep -A5 'react {'
 
-    - name: Build Android APK (NODE_OPTIONS fixes Node 24 ESM compatibility)
+    - name: Manually generate JS bundle (bypasses gradle's react-native bundle command)
+      run: |
+        echo "--- Manually generating index.android.bundle ---"
+        NODE_OPTIONS="--experimental-vm-modules" npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
+        echo "--- Verifying bundle was created ---"
+        ls -lh android/app/src/main/assets/index.android.bundle
+
+    - name: Build Android APK
       run: |
         cd android
-        NODE_OPTIONS="--experimental-vm-modules" ./gradlew assembleDebug -PbundleInDebug=true --no-daemon
+        ./gradlew assembleDebug --no-daemon
         cd ..
         echo "--- APK output listing ---"
         ls -lh android/app/build/outputs/apk/debug/
