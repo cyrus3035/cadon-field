@@ -74,24 +74,26 @@ jobs:
         sed -i '/react {/a\    debuggableVariants = []' android/app/build.gradle
         grep -A 5 "react {" android/app/build.gradle
 
-    - name: Create assets directory for Gradle bundle generation
+    - name: Create assets directory and generate JS bundle manually
       run: |
         mkdir -p android/app/src/main/assets
-        echo "=== Assets directory created, Gradle will generate JS bundle during build ==="
+        echo "=== Starting react-native bundle generation ==="
+        timeout 180 npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
+        if [ -f "android/app/src/main/assets/index.android.bundle" ]; then
+          echo "=== JS bundle generated successfully ==="
+          ls -lh android/app/src/main/assets/index.android.bundle
+        else
+          echo "=== JS bundle generation failed or timed out ==="
+          echo "ERROR: JS bundle not generated"
+          exit 1
+        fi
 
     - name: Build APK
       run: |
-        echo "=== Node.js version ==="
-        node --version
-        echo "=== npm version ==="
-        npm --version
-        echo "=== PATH ==="
-        echo $PATH
         cd android
         export GRADLE_OPTS="-Xmx4g -XX:MaxMetaspaceSize=512m"
         export JAVA_OPTS="-Xmx4g"
-        export PATH="$PATH:$HOME/node_modules/.bin"
-        ./gradlew assembleDebug --no-daemon --info 2>&1 | tail -300
+        ./gradlew assembleDebug --no-daemon 2>&1 | tail -200
         cd ..
         echo "=== Searching for APK files ==="
         find android -name "*.apk" -type f 2>/dev/null || echo "No APK files found"
