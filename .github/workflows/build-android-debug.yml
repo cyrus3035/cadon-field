@@ -60,13 +60,20 @@ jobs:
     - name: Force JS bundle embedding in debug build
       run: |
         sed -i '/react {/a\    debuggableVariants = []' android/app/build.gradle
-        sed -i "s|entryFile = file(\\[\"node\", \"-e\", \"require('expo/scripts/resolveAppEntry')\", projectRoot, \"android\", \"absolute\"\\].execute(null, rootDir).text.trim())|entryFile = file(\"../index.js\")|g" android/app/build.gradle
         cat android/app/build.gradle | grep -A10 'react {'
+
+    - name: Get resolved entry file from expo config
+      id: resolve_entry
+      run: |
+        ENTRY_FILE=$(node node_modules/expo/scripts/resolveAppEntry.js . android relative)
+        echo "ENTRY_FILE=$ENTRY_FILE" >> $GITHUB_ENV
+        echo "Resolved entry file: $ENTRY_FILE"
 
     - name: Create assets directory and generate JS bundle manually
       run: |
         mkdir -p android/app/src/main/assets
-        npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/ 2>&1
+        echo "=== Generating JS bundle with entry file: $ENTRY_FILE ==="
+        npx react-native bundle --platform android --dev false --entry-file "$ENTRY_FILE" --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/ 2>&1
         
         if [ -f "android/app/src/main/assets/index.android.bundle" ]; then
           echo "JS bundle generated: $(wc -c < android/app/src/main/assets/index.android.bundle) bytes"
