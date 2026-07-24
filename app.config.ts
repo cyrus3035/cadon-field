@@ -2,7 +2,7 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'cadon-field',
+  name: 'CADonField',
   displayName: 'CADonField',
   slug: 'cadon-field',
   version: '1.0.0',

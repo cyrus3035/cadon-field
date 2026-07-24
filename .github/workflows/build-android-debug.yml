@@ -62,6 +62,12 @@ jobs:
         echo "--- Added suppressKotlinVersionCompatibilityCheck to root build.gradle ---"
         tail -10 android/build.gradle
 
+    - name: Force JS bundle embedding in debug build
+      run: |
+        echo "--- Forcing debuggableVariants = [] to ensure JS bundle is embedded ---"
+        sed -i '/react {/a\    debuggableVariants = []' android/app/build.gradle
+        grep -A 5 "react {" android/app/build.gradle
+
     - name: Build Android APK (bundleInDebug=true embeds JS inside APK)
       run: |
         cd android
