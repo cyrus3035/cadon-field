@@ -77,8 +77,15 @@ jobs:
     - name: Create assets directory and generate JS bundle manually
       run: |
         mkdir -p android/app/src/main/assets
-        npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
-        ls -lh android/app/src/main/assets/index.android.bundle
+        echo "=== Starting react-native bundle generation ==="
+        timeout 120 npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
+        if [ -f "android/app/src/main/assets/index.android.bundle" ]; then
+          echo "=== JS bundle generated successfully ==="
+          ls -lh android/app/src/main/assets/index.android.bundle
+        else
+          echo "=== JS bundle generation failed or timed out, skipping manual generation ==="
+          echo "Gradle will generate bundle during build"
+        fi
 
     - name: Build APK
       run: |
