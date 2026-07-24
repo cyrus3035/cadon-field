@@ -58,6 +58,12 @@ jobs:
         }
         EOF
 
+    - name: Force JS bundle embedding in debug build
+      run: |
+        echo "--- Forcing debuggableVariants = [] to ensure JS bundle is embedded ---"
+        sed -i '/react {/a\    debuggableVariants = []' android/app/build.gradle
+        grep -A 5 "react {" android/app/build.gradle
+
     - name: Create assets directory and generate JS bundle manually
       run: |
         mkdir -p android/app/src/main/assets
