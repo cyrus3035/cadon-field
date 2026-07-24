@@ -58,10 +58,16 @@ jobs:
         }
         EOF
 
+    - name: Create assets directory and generate JS bundle manually
+      run: |
+        mkdir -p android/app/src/main/assets
+        npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
+        ls -lh android/app/src/main/assets/index.android.bundle
+
     - name: Build APK
       run: |
         cd android
-        ./gradlew assembleDebug -PbundleInDebug=true
+        ./gradlew assembleDebug
         cd ..
         ls -lh android/app/build/outputs/apk/debug/
         unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep bundle
