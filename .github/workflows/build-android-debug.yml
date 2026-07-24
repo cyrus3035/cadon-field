@@ -14,13 +14,18 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Node.js
+    - name: Setup Node.js 20.x
       uses: actions/setup-node@v4
       with:
         node-version: 20.x
+        cache: 'npm'
 
     - name: Install dependencies
-      run: npm install
+      run: |
+        echo "=== Installing dependencies ==="
+        npm install
+        echo "=== Dependencies installed ==="
+        npm list --depth=0
 
     - name: Patch react-native-webview/index.js ESM -> CJS
       run: |
@@ -39,17 +44,41 @@ jobs:
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
+      with:
+        packages: |
+          build-tools;34.0.0
+          platforms;android-35
+
+    - name: Verify Java version
+      run: |
+        java -version
+        javac -version
+
+    - name: Verify Node version
+      run: |
+        node --version
+        npm --version
 
     - name: Run expo prebuild
-      run: npx expo prebuild --platform android --no-install
+      run: |
+        echo "=== Running expo prebuild ==="
+        npx expo prebuild --platform android --no-install
+        echo "=== expo prebuild completed ==="
 
-    - name: Verify app_name in strings.xml (software name should be CADonField)
+    - name: Verify app_name in strings.xml
       run: |
         echo "--- Checking app_name in strings.xml ---"
         cat android/app/src/main/res/values/strings.xml | grep -n 'app_name'
+        APP_NAME=$(grep -oP '(?<=<string name="app_name">)[^<]+' android/app/src/main/res/values/strings.xml)
+        echo "Current app_name: $APP_NAME"
+        if [ "$APP_NAME" != "CADonField" ]; then
+          echo "ERROR: app_name is not CADonField!"
+          exit 1
+        fi
 
     - name: Fix Kotlin/Compose compatibility
       run: |
+        echo "=== Adding suppressKotlinVersionCompatibilityCheck ==="
         cat >> android/build.gradle << 'EOF'
         subprojects {
             tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
@@ -59,49 +88,79 @@ jobs:
             }
         }
         EOF
-        echo "--- Added suppressKotlinVersionCompatibilityCheck ---"
+        echo "=== Added suppressKotlinVersionCompatibilityCheck ==="
 
     - name: Force JS bundle embedding in debug build
       run: |
-        echo "--- Forcing debuggableVariants = [] ---"
+        echo "=== Forcing debuggableVariants = [] ==="
         sed -i '/react {/a\    debuggableVariants = []' android/app/build.gradle
-        echo "--- Verifying react block in build.gradle ---"
+        echo "=== Verifying react block in build.gradle ==="
         cat android/app/build.gradle | grep -A5 'react {'
 
     - name: Create assets directory and generate JS bundle manually
       run: |
+        echo "=== Creating assets directory ==="
         mkdir -p android/app/src/main/assets
         echo "=== Starting react-native bundle generation ==="
-        npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
+        npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/ 2>&1
+        BUNDLE_EXIT_CODE=$?
+        echo "=== Bundle generation exit code: $BUNDLE_EXIT_CODE ==="
+        
         if [ -f "android/app/src/main/assets/index.android.bundle" ]; then
           echo "=== JS bundle generated successfully ==="
           ls -lh android/app/src/main/assets/index.android.bundle
+          BUNDLE_SIZE=$(wc -c < android/app/src/main/assets/index.android.bundle)
+          echo "Bundle size: $BUNDLE_SIZE bytes"
+          if [ $BUNDLE_SIZE -lt 1000 ]; then
+            echo "ERROR: Bundle size is too small, likely corrupted!"
+            exit 1
+          fi
         else
           echo "=== ERROR: JS bundle generation failed ==="
           exit 1
         fi
 
-    - name: Build Android APK (bundleInDebug=true ensures JS is embedded)
+    - name: Build Android APK
       run: |
+        echo "=== Starting Gradle build ==="
         cd android
         export GRADLE_OPTS="-Xmx4g -XX:MaxMetaspaceSize=512m"
         export JAVA_OPTS="-Xmx4g"
-        ./gradlew assembleDebug -PbundleInDebug=true --no-daemon 2>&1 | tail -200
+        ./gradlew assembleDebug -PbundleInDebug=true --no-daemon --info 2>&1 | tail -300
+        GRADLE_EXIT_CODE=$?
         cd ..
+        echo "=== Gradle build exit code: $GRADLE_EXIT_CODE ==="
+        
         echo "--- APK output listing ---"
-        ls -lh android/app/build/outputs/apk/debug/
+        ls -lh android/app/build/outputs/apk/debug/ 2>/dev/null || echo "No debug APK directory found"
+
+    - name: Verify APK exists
+      run: |
+        echo "=== Checking APK file ==="
+        APK_PATH=$(find android -name "app-debug.apk" -type f 2>/dev/null | head -1)
+        if [ -n "$APK_PATH" ]; then
+          echo "APK file found at: $APK_PATH"
+          ls -lh "$APK_PATH"
+          APK_SIZE=$(wc -c < "$APK_PATH")
+          echo "APK size: $APK_SIZE bytes"
+          echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
+        else
+          echo "ERROR: APK file not found!"
+          find android -name "*.apk" -type f 2>/dev/null
+          exit 1
+        fi
 
     - name: Verify JS bundle is inside APK
       run: |
         echo "=== Verifying index.android.bundle is inside APK ==="
-        BUNDLE_CHECK=$(unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep "assets/index.android.bundle")
+        BUNDLE_CHECK=$(unzip -l "$APK_PATH" | grep "assets/index.android.bundle")
         if [ -n "$BUNDLE_CHECK" ]; then
           echo "SUCCESS: index.android.bundle found in APK"
           echo "$BUNDLE_CHECK"
         else
           echo "ERROR: index.android.bundle NOT FOUND in APK!"
           echo "Contents of APK assets:"
-          unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep "assets/"
+          unzip -l "$APK_PATH" | grep "assets/"
           exit 1
         fi
 
@@ -109,5 +168,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: CADonField-debug-apk
-        path: android/app/build/outputs/apk/debug/app-debug.apk
+        path: ${{ env.APK_PATH }}
         retention-days: 14
