@@ -61,7 +61,27 @@ jobs:
         EOF
         echo "--- Added suppressKotlinVersionCompatibilityCheck ---"
 
-    - name: Build Android APK (bundleInDebug=true embeds JS inside APK)
+    - name: Force JS bundle embedding in debug build
+      run: |
+        echo "--- Forcing debuggableVariants = [] ---"
+        sed -i '/react {/a\    debuggableVariants = []' android/app/build.gradle
+        echo "--- Verifying react block in build.gradle ---"
+        cat android/app/build.gradle | grep -A5 'react {'
+
+    - name: Create assets directory and generate JS bundle manually
+      run: |
+        mkdir -p android/app/src/main/assets
+        echo "=== Starting react-native bundle generation ==="
+        npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
+        if [ -f "android/app/src/main/assets/index.android.bundle" ]; then
+          echo "=== JS bundle generated successfully ==="
+          ls -lh android/app/src/main/assets/index.android.bundle
+        else
+          echo "=== ERROR: JS bundle generation failed ==="
+          exit 1
+        fi
+
+    - name: Build Android APK (bundleInDebug=true ensures JS is embedded)
       run: |
         cd android
         export GRADLE_OPTS="-Xmx4g -XX:MaxMetaspaceSize=512m"
@@ -70,8 +90,20 @@ jobs:
         cd ..
         echo "--- APK output listing ---"
         ls -lh android/app/build/outputs/apk/debug/
-        echo "--- Check if bundle inside APK assets ---"
-        unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep -i "bundle" || echo "WARNING: no bundle found in APK assets"
+
+    - name: Verify JS bundle is inside APK
+      run: |
+        echo "=== Verifying index.android.bundle is inside APK ==="
+        BUNDLE_CHECK=$(unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep "assets/index.android.bundle")
+        if [ -n "$BUNDLE_CHECK" ]; then
+          echo "SUCCESS: index.android.bundle found in APK"
+          echo "$BUNDLE_CHECK"
+        else
+          echo "ERROR: index.android.bundle NOT FOUND in APK!"
+          echo "Contents of APK assets:"
+          unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep "assets/"
+          exit 1
+        fi
 
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
